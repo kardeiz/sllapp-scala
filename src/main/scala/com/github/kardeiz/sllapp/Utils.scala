@@ -31,13 +31,13 @@ object Props {
 object Utils {
 
   // def startRepl = {
-  //   import com.github.kardeiz.sllapp._
-  //   import Tables._
-  //   import scala.slick.driver.H2Driver.simple._
-  //   val cpds = DatabaseHelper.buildDataSource
-  //   val db   = DatabaseHelper.buildDatabase(cpds)
-  //   implicit def session = db.createSession
-  //   ( users.ddl ++ resources.ddl ++ reservations.ddl ).create
+    import com.github.kardeiz.sllapp._
+    import Tables._
+    import scala.slick.driver.H2Driver.simple._
+    val cpds = DatabaseHelper.buildDataSource
+    val db   = DatabaseHelper.buildDatabase(cpds)
+    implicit def session = db.createSession
+    ( users.ddl ++ resources.ddl ++ reservations.ddl ).create
   //   val u = User.build( Props.Demo.UserUid, Props.Demo.UserPin )
 
 
@@ -56,6 +56,7 @@ object Utils {
 object Sip2Utils {
   
   import Props.Sip2._
+  import Tables.User
 
   import com.pkrete.jsip2.connection.SIP2SocketConnection
   import com.pkrete.jsip2.messages._
@@ -85,7 +86,7 @@ object Sip2Utils {
     }   
   }
 
-  def patronInfoRequest(uid: String, pin: String) = {    
+  def makePatronInfoRequest(uid: String, pin: String) = {    
     val msgRequest = new SIP2PatronInformationRequest(Ao, uid, pin)
     msgRequest.setErrorDetectionEnabled(true)
     processRequest(msgRequest) match {

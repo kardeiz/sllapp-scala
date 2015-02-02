@@ -62,7 +62,11 @@ object Tables {
     val findByUid = this.findBy(_.uid)
   }
 
-  // val users = TableQuery[Users]
+  implicit class UserExtensions[C[_]](q: Query[Users, User, C]) {
+
+    def withReservations = q.join(reservations).on(_.id === _.resourceId)
+  
+  }
 
   case class Resource(
     id: Option[Int],
@@ -117,3 +121,26 @@ object Tables {
   val reservations = TableQuery[Reservations]
 
 }
+
+trait SlickSupport {
+  
+  import Tables._
+  import scala.slick.jdbc.JdbcBackend.Database.dynamicSession
+
+  def db: Database
+
+  def findOrCreateUser(uid: String)(f: () => User) = 
+    db.withDynSession {
+      users.findByUid(uid).firstOption match {
+        case Some(user: User) => user
+        case _ => {
+          val user = f()
+          val id   = users.insert(user)
+          user.copy(id = id)
+        }
+      }
+    }
+  
+}
+
+case class SlickObject(db: Database) extends SlickSupport

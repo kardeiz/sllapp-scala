@@ -11,19 +11,19 @@ import Tables._
 import scala.slick.driver.H2Driver.simple._
 import scala.slick.jdbc.JdbcBackend.Database.dynamicSession
 
-class Sip2Strategy(protected val app: MainServlet)(
+class Sip2Strategy(protected val app: ScalatraBase)(
   implicit request: HttpServletRequest, 
   response: HttpServletResponse
 ) extends ScentryStrategy[User] {
   
   val logger = LoggerFactory.getLogger(getClass)
 
-  override def name: String = "Sip2 Authentication"
+  override def name: String = "Sip2Auth"
   
   lazy val uid = app.params.getOrElse("uid", "")
   lazy val pin = app.params.getOrElse("pin", "")
 
-  lazy val sip2Response = Sip2Utils.patronInfoRequest(uid, pin)
+  lazy val sip2Response = Sip2Utils.makePatronInfoRequest(uid, pin)
   lazy val encryptedPin = Utils.passHash(pin)
 
   override def isValid(implicit request: HttpServletRequest) = 
@@ -31,21 +31,16 @@ class Sip2Strategy(protected val app: MainServlet)(
 
   def authenticate()(implicit request: HttpServletRequest, response: HttpServletResponse): Option[User] = {
     if (sip2Response.isValidPatronPassword) {
-      users.findByUid(uid).firstOption match {
-        case Some(user: User) => Some(user)
-        case _ => {          
-          val user = {
-            val (e, l, f) = Sip2Utils.extractData(sip2Response)
-            User(None, uid, encryptedPin, e, l, f)
-          }
-          app.db.withDynSession {
-            users.insert(user)
-          }
-          Some(user)
+      msApp.db.withDynSession {
+        msApp.findOrCreateUser(uid) {
+          val (e, l, f) = Sip2Utils.extractData(sip2Response)
+          User(None, uid, encryptedPin, e, l, f)
         }
       }
-    }    
+    } else None
   }
+
+  def msApp = app.asInstanceOf[MainServlet]
 
   override def unauthenticated()(implicit request: HttpServletRequest, response: HttpServletResponse) {
     app.redirect("/auth/login")
@@ -53,9 +48,9 @@ class Sip2Strategy(protected val app: MainServlet)(
 }
 
 trait AuthenticationSupport 
-  extends MainServlet with ScentrySupport[User] { 
+  extends ScalatraBase with ScentrySupport[User] { 
 
-  self: MainServlet =>
+  self: ScalatraBase =>
 
   protected def fromSession = { 
     case id: String => users.findById(id.toInt).first
