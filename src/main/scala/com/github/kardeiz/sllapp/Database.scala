@@ -129,14 +129,14 @@ trait SlickSupport {
 
   def db: Database
 
-  def findOrCreateUser(uid: String)(f: () => User) = 
+  def findOrCreateUser(uid: String)(f: => User) = 
     db.withDynSession {
       users.findByUid(uid).firstOption match {
         case Some(user: User) => user
         case _ => {
-          val user = f()
+          val user = f
           val id   = users.insert(user)
-          user.copy(id = id)
+          user.copy(id = Some(id))
         }
       }
     }

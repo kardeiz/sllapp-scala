@@ -31,12 +31,13 @@ class Sip2Strategy(protected val app: ScalatraBase)(
 
   def authenticate()(implicit request: HttpServletRequest, response: HttpServletResponse): Option[User] = {
     if (sip2Response.isValidPatronPassword) {
-      msApp.db.withDynSession {
+      val user = msApp.db.withDynSession {
         msApp.findOrCreateUser(uid) {
           val (e, l, f) = Sip2Utils.extractData(sip2Response)
           User(None, uid, encryptedPin, e, l, f)
         }
       }
+      Some(user)
     } else None
   }
 

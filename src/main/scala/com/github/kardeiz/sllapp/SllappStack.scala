@@ -9,8 +9,8 @@ import scala.slick.jdbc.JdbcBackend.Database
 trait SllappStack 
   extends ScalatraServlet 
   with FlashMapSupport 
-  with UrlGeneratorSupport {
-
+  with UrlGeneratorSupport
+  with SlickSupport {
   notFound {
     contentType = null
     serveStaticResource() getOrElse resourceNotFound()
