@@ -5,13 +5,21 @@ import scala.slick.jdbc.JdbcBackend.Database
 
 class MainServlet(val db: Database) extends SllappStack {
 
-  get("/") {
-    <html>
-      <body>
-        <h1>Hello, world!</h1>
-        Say <a href="hello-scalate">hello to Scalate</a>.
-      </body>
-    </html>
+  val rootPath = get("/") { 
+    layouts.html.default(this)
   }
+
+  // val testPath = get("/test") {
+  //   flash("info") = "hi"
+  //   redirect("/")
+  // }
+
+  val reservationsPath = get("/reservations") {}
+
+  val authLoginGet = get("/auth/login") {}
+
+  val authLoginPost = post("/auth/login") {}
+
+  val authLogoutPath = get("/auth/logout") {}
 
 }

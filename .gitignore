@@ -69,3 +69,5 @@ jrebel.lic
 /.lib/
 
 .env
+/extra/bower_components/
+/extra/node_modules/

@@ -2,7 +2,7 @@ import sbt._
 import Keys._
 import org.scalatra.sbt._
 import org.scalatra.sbt.PluginKeys._
-import com.mojolly.scalate.ScalatePlugin._
+import play.twirl.sbt.SbtTwirl
 
 object SllappBuild extends Build {
   val Organization = "com.github.kardeiz"
@@ -39,5 +39,5 @@ object SllappBuild extends Build {
         "org.virtualbox_4_3" % "vboxjws" % "4.3.0"
       )
     )
-  )
+  ).enablePlugins(SbtTwirl)
 }

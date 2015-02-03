@@ -64,7 +64,7 @@ object Tables {
 
   implicit class UserExtensions[C[_]](q: Query[Users, User, C]) {
 
-    def withReservations = q.join(reservations).on(_.id === _.resourceId)
+    def withReservations = q.join(reservations).on(_.id === _.userId)
   
   }
 

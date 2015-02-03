@@ -10,7 +10,8 @@ trait SllappStack
   extends ScalatraServlet 
   with FlashMapSupport 
   with UrlGeneratorSupport
-  with SlickSupport {
+  with SlickSupport
+  with AuthenticationSupport {
   notFound {
     contentType = null
     serveStaticResource() getOrElse resourceNotFound()

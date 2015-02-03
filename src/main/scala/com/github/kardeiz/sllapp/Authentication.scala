@@ -46,12 +46,15 @@ class Sip2Strategy(protected val app: ScalatraBase)(
   override def unauthenticated()(implicit request: HttpServletRequest, response: HttpServletResponse) {
     app.redirect("/auth/login")
   }
+
 }
 
 trait AuthenticationSupport 
   extends ScalatraBase with ScentrySupport[User] { 
 
   self: ScalatraBase =>
+
+  def msApp = self.asInstanceOf[MainServlet]
 
   protected def fromSession = { 
     case id: String => users.findById(id.toInt).first
@@ -69,8 +72,13 @@ trait AuthenticationSupport
 
   protected def requireLogin() = {
     if(!isAuthenticated) {
+      msApp.flash("info") = "Please login"
       redirect(scentryConfig.login)
     }
+  }
+
+  object exp {
+    def isAuthenticated = self.isAuthenticated
   }
 
   /**
