@@ -31,13 +31,13 @@ object Props {
 object Utils {
 
   // def startRepl = {
-    import com.github.kardeiz.sllapp._
-    import Tables._
-    import scala.slick.driver.H2Driver.simple._
-    val cpds = DatabaseHelper.buildDataSource
-    val db   = DatabaseHelper.buildDatabase(cpds)
-    implicit def session = db.createSession
-    ( users.ddl ++ resources.ddl ++ reservations.ddl ).create
+    // import com.github.kardeiz.sllapp._
+    // import Tables._
+    // import scala.slick.driver.H2Driver.simple._
+    // val cpds = DatabaseHelper.buildDataSource
+    // val db   = DatabaseHelper.buildDatabase(cpds)
+    // implicit def session = db.createSession
+    // ( users.ddl ++ resources.ddl ++ reservations.ddl ).create
   //   val u = User.build( Props.Demo.UserUid, Props.Demo.UserPin )
 
 

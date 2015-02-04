@@ -12,7 +12,8 @@ class ScalatraBootstrap extends LifeCycle {
   val cpds = DatabaseHelper.buildDataSource
 
   override def init(context: ServletContext) {
-    val db = DatabaseHelper.buildDatabase(cpds)
+    val db = DatabaseHelper.setupDatabase(cpds)
+    DatabaseHelper.buildDatabaseTables(db)
     context.mount(new MainServlet(db), "/*")
   }
 

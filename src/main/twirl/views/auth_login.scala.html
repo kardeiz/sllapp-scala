@@ -1,0 +1,24 @@
+@(
+  implicit context: com.github.kardeiz.sllapp.MainServlet
+)
+
+@layouts.html.default("Sign In") {
+  <div class="row">
+    <div class="col-sm-4 col-sm-offset-4">
+      <h4 class="page-header">Sign in</h4>
+      <form method="POST">
+        <div class="form-group">
+          <label for="uid" class="control-label">Card number</label>
+          <input class="form-control" name="uid" type="text"/>
+        </div>
+         <div class="form-group">
+          <label for="pin" class="control-label">PIN</label>
+          <input class="form-control" name="pin" type="password"/>
+        </div>
+        <div class="form-group">
+          <button>Go</button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

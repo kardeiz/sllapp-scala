@@ -43,9 +43,9 @@ class Sip2Strategy(protected val app: ScalatraBase)(
 
   def msApp = app.asInstanceOf[MainServlet]
 
-  override def unauthenticated()(implicit request: HttpServletRequest, response: HttpServletResponse) {
-    app.redirect("/auth/login")
-  }
+  // override def unauthenticated()(implicit request: HttpServletRequest, response: HttpServletResponse) {
+  //   app.redirect("/auth/login")
+  // }
 
 }
 
@@ -57,39 +57,35 @@ trait AuthenticationSupport
   def msApp = self.asInstanceOf[MainServlet]
 
   protected def fromSession = { 
-    case id: String => users.findById(id.toInt).first
+    case id: String => msApp.db.withDynSession { 
+      users.findById(id.toInt).first
+    }
   }
 
   protected def toSession = { 
     case user: User => user.id.getOrElse(-1).toString
   }
 
-  protected val scentryConfig = (new ScentryConfig {
-    override val login = "/auth/login"
-  }).asInstanceOf[ScentryConfiguration]
+  protected val scentryConfig = (new ScentryConfig).asInstanceOf[ScentryConfiguration]
 
   val logger = LoggerFactory.getLogger(getClass)
 
-  protected def requireLogin() = {
-    if(!isAuthenticated) {
-      msApp.flash("info") = "Please login"
-      redirect(scentryConfig.login)
-    }
-  }
-
-  object exp {
-    def isAuthenticated = self.isAuthenticated
-  }
+  // protected def requireLogin() = {
+  //   if(!isAuthenticated) {
+  //     msApp.flash("info") = "Please login"
+  //     redirect(scentryConfig.login)
+  //   }
+  // }
 
   /**
    * If an unauthenticated user attempts to access a route which is protected by Scentry,
    * run the unauthenticated() method on the UserPasswordStrategy.
    */
-  override protected def configureScentry = {
-    scentry.unauthenticated {
-      scentry.strategies("Sip2Auth").unauthenticated()
-    }
-  }
+  // override protected def configureScentry = {
+  //   scentry.unauthenticated {
+  //     scentry.strategies("Sip2Auth").unauthenticated()
+  //   }
+  // }
 
   /**
    * Register auth strategies with Scentry. Any controller with this trait mixed in will attempt to

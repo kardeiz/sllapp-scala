@@ -11,11 +11,29 @@ trait SllappStack
   with FlashMapSupport 
   with UrlGeneratorSupport
   with SlickSupport
-  with AuthenticationSupport {
+  with AuthenticationSupport { self: MainServlet => 
+
   notFound {
     contentType = null
     serveStaticResource() getOrElse resourceNotFound()
   }
+
+  def simpleUrl(
+    path: String,
+    params: Iterable[(String, Any)] = Iterable.empty
+  ) = url(path, params, withSessionId = false)
+
+  def requireLogin() = {
+    if( !isAuthenticated ) {
+      flash("info") = "Please login"
+      redirect( url(authLoginGet) )
+    }
+  }
+
+  object viewHelpers {
+    def isAuthenticated = self.isAuthenticated
+  }
+
 }
 
 // trait SlickSupport extends ScalatraBase {

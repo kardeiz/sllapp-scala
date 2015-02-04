@@ -10,6 +10,7 @@ import scala.slick.jdbc.JdbcBackend.Database
 object DatabaseHelper {
 
   import Props.Db
+  import Tables._
 
   def buildDataSource = {
     val cpds = new ComboPooledDataSource
@@ -20,8 +21,14 @@ object DatabaseHelper {
     cpds
   }
 
-  def buildDatabase(cpds: ComboPooledDataSource) =
+  def setupDatabase(cpds: ComboPooledDataSource) =
     Database.forDataSource(cpds)
+
+  def buildDatabaseTables(db: Database) =
+    db.withSession { implicit session =>
+      ( users.ddl ++ resources.ddl ++ reservations.ddl ).create
+    }
+    
 
 }
 
