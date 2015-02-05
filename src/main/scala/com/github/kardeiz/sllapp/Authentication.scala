@@ -66,7 +66,7 @@ trait AuthenticationSupport
     case user: User => user.id.getOrElse(-1).toString
   }
 
-  protected val scentryConfig = (new ScentryConfig).asInstanceOf[ScentryConfiguration]
+  protected val scentryConfig = (new ScentryConfig {}).asInstanceOf[ScentryConfiguration]
 
   val logger = LoggerFactory.getLogger(getClass)
 

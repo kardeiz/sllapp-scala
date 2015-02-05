@@ -36,7 +36,9 @@ object SllappBuild extends Build {
         "com.h2database" % "h2" % "1.4.185",
         "c3p0" % "c3p0" % "0.9.1.2",
         "org.scalatra" %% "scalatra-auth" % "2.4.0.M2",
-        "org.virtualbox_4_3" % "vboxjws" % "4.3.0"
+        "org.virtualbox_4_3" % "vboxjws" % "4.3.0",
+        "joda-time" % "joda-time" % "2.7",
+        "org.quartz-scheduler" % "quartz" % "2.2.1"
       )
     )
   ).enablePlugins(SbtTwirl)
