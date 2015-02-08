@@ -1,5 +1,10 @@
 package com.github.kardeiz.sllapp
 
+import org.joda.time._
+import org.joda.time.format._
+
+object LocalDriver extends scala.slick.driver.H2Driver
+
 object Props {
 	
   object Sip2 {
@@ -28,21 +33,54 @@ object Props {
 
 }
 
+case class Danger(
+  errors: Seq[String] = List("Bad request"), 
+  backTo: Option[String] = None
+) extends Exception
+
+
+case class TimeSlot(startTime: DateTime, endTime: DateTime, available: Boolean)
+
+case class Schedule(date: DateTime = DateTime.now, optResource: Option[Models.Resource] = None) {
+
+  val currentDate = DateTime.now
+
+  val startTime = if (date.toLocalDate == currentDate.toLocalDate)
+    currentDate.withTime(currentDate.getHourOfDay, 0, 0, 0)
+  else date.withTimeAtStartOfDay
+
+  val endTime = date.withTimeAtStartOfDay.plus(Period.days(1))
+
+  val hoursOfDay = Schedule.iterateBetween(startTime, endTime)
+
+  val reservationsOfDay = 
+    Models.Reservation.forSchedule(this).getOrElse(List.empty)
+
+  val timeSlots = hoursOfDay.map { hour =>
+    val available = !reservationsOfDay.exists( res =>
+      Schedule.iterateBetween(res.startTime, res.endTime).contains(hour)
+    )
+    TimeSlot(hour, hour.plus(Period.hours(1)), available)
+  }
+}
+
+object Schedule {
+  
+  def iterateBetween(
+    st: DateTime, et: DateTime, it: List[DateTime] = List.empty
+  ): List[DateTime] = if (st.isBefore(et)) 
+    st :: iterateBetween(st.plus(Period.hours(1)), et, it) 
+  else it
+
+  val formatDate = DateTimeFormat.forPattern("yyyy-MM-dd")
+  val formatTime = DateTimeFormat.forPattern("hh:mm a")
+  val formatBoth = DateTimeFormat.forPattern("yyyy-MM-dd hh:mm a")
+  val formatIso = ISODateTimeFormat.dateTime
+
+}
+
+
 object Utils {
-
-  // def startRepl = {
-    // import com.github.kardeiz.sllapp._
-    // import Tables._
-    // import scala.slick.driver.H2Driver.simple._
-    // val cpds = DatabaseHelper.buildDataSource
-    // val db   = DatabaseHelper.buildDatabase(cpds)
-    // implicit def session = db.createSession
-    // ( users.ddl ++ resources.ddl ++ reservations.ddl ).create
-  //   val u = User.build( Props.Demo.UserUid, Props.Demo.UserPin )
-
-
-  //   cpds.close
-  // }
 
   val msgDigest = java.security.MessageDigest.getInstance("SHA-256")
 
@@ -56,7 +94,6 @@ object Utils {
 object Sip2Utils {
   
   import Props.Sip2._
-  import Tables.User
 
   import com.pkrete.jsip2.connection.SIP2SocketConnection
   import com.pkrete.jsip2.messages._
@@ -113,22 +150,22 @@ object VboxUtils {
     result
   }
 
-  def createReservation(user: Tables.User, resource: Tables.Resource) = {
-    process { manager => 
-      val machine = manager.getVBox.findMachine(resource.name)
-      val session = manager.getSessionObject
-      machine.lockMachine(session, LockType.Write)
-      val mutable = session.getMachine
-      mutable.setExtraData(
-        s"VBoxAuthSimple/users/${user.uid}",
-        user.encryptedPin
-      )
-      mutable.saveSettings
-      session.unlockMachine
-      val progress = machine.launchVMProcess(session, "headless", null)
-      progress.waitForCompletion(-1)
-      session.unlockMachine
-    }
-  }
+  // def createReservation(user: Tables.User, resource: Tables.Resource) = {
+  //   process { manager => 
+  //     val machine = manager.getVBox.findMachine(resource.name)
+  //     val session = manager.getSessionObject
+  //     machine.lockMachine(session, LockType.Write)
+  //     val mutable = session.getMachine
+  //     mutable.setExtraData(
+  //       s"VBoxAuthSimple/users/${user.uid}",
+  //       user.encryptedPin
+  //     )
+  //     mutable.saveSettings
+  //     session.unlockMachine
+  //     val progress = machine.launchVMProcess(session, "headless", null)
+  //     progress.waitForCompletion(-1)
+  //     session.unlockMachine
+  //   }
+  // }
 
 }

@@ -6,10 +6,7 @@ import org.scalatra.auth.{ScentryConfig, ScentrySupport, ScentryStrategy}
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 import org.slf4j.LoggerFactory
 
-import Tables._
-
-import scala.slick.driver.H2Driver.simple._
-import scala.slick.jdbc.JdbcBackend.Database.dynamicSession
+import Models._
 
 class Sip2Strategy(protected val app: ScalatraBase)(
   implicit request: HttpServletRequest, 
@@ -24,73 +21,88 @@ class Sip2Strategy(protected val app: ScalatraBase)(
   lazy val pin = app.params.getOrElse("pin", "")
 
   lazy val sip2Response = Sip2Utils.makePatronInfoRequest(uid, pin)
-  lazy val encryptedPin = Utils.passHash(pin)
 
   override def isValid(implicit request: HttpServletRequest) = 
     !uid.isEmpty && !pin.isEmpty
 
   def authenticate()(implicit request: HttpServletRequest, response: HttpServletResponse): Option[User] = {
     if (sip2Response.isValidPatronPassword) {
-      val user = msApp.db.withDynSession {
-        msApp.findOrCreateUser(uid) {
-          val (e, l, f) = Sip2Utils.extractData(sip2Response)
-          User(None, uid, encryptedPin, e, l, f)
-        }
+      val user = User.findOrCreate(uid) {
+        val (e, l, f) = Sip2Utils.extractData(sip2Response)
+        User(None, uid, Utils.passHash(pin), e, l, f)
       }
       Some(user)
     } else None
   }
-
-  def msApp = app.asInstanceOf[MainServlet]
-
-  // override def unauthenticated()(implicit request: HttpServletRequest, response: HttpServletResponse) {
-  //   app.redirect("/auth/login")
-  // }
 
 }
 
 trait AuthenticationSupport 
   extends ScalatraBase with ScentrySupport[User] { 
 
-  self: ScalatraBase =>
+  self: MainServlet =>
 
-  def msApp = self.asInstanceOf[MainServlet]
+  object _scentryConfig extends ScentryConfig {
+    override val login = url(authLoginGet)
+    override val returnTo = url(rootPath)
+    override val returnToKey = "returnTo"
+    override val failureUrl = url(authLoginGet)
+  }
 
   protected def fromSession = { 
-    case id: String => msApp.db.withDynSession { 
-      users.findById(id.toInt).first
-    }
+    case id: String => User.findById(id.toInt).get
   }
 
   protected def toSession = { 
-    case user: User => user.id.getOrElse(-1).toString
+    case user: User => user.id.get.toString
   }
 
-  protected val scentryConfig = (new ScentryConfig {}).asInstanceOf[ScentryConfiguration]
+  def scentryConfig = _scentryConfig.asInstanceOf[ScentryConfiguration]
 
   val logger = LoggerFactory.getLogger(getClass)
 
-  // protected def requireLogin() = {
-  //   if(!isAuthenticated) {
-  //     msApp.flash("info") = "Please login"
-  //     redirect(scentryConfig.login)
-  //   }
-  // }
+  override protected def configureScentry = {
+    scentry.unauthenticated {
+      flash("danger") = "Login failed"
+      redirect(scentryConfig.login)
+    }
+  }
 
-  /**
-   * If an unauthenticated user attempts to access a route which is protected by Scentry,
-   * run the unauthenticated() method on the UserPasswordStrategy.
-   */
-  // override protected def configureScentry = {
-  //   scentry.unauthenticated {
-  //     scentry.strategies("Sip2Auth").unauthenticated()
-  //   }
-  // }
+  protected def requireLogin {
+    if(!isAuthenticated) {
+      session(scentryConfig.returnToKey) = {
+        val qs = Option(request.getQueryString).map("?" + _).getOrElse("")
+        request.getRequestURL.toString + qs
+      }
+      flash("info") = "Please login"
+      redirect(scentryConfig.login)
+    }
+  }
 
-  /**
-   * Register auth strategies with Scentry. Any controller with this trait mixed in will attempt to
-   * progressively use all registered strategies to log the user in, falling back if necessary.
-   */
+  def afterAuthenticate(implicit request: HttpServletRequest, response: HttpServletResponse) {
+    flash("success") = "Signed in successfully"
+    val returnTo = session.get(scentryConfig.returnToKey) match {
+      case Some(returnToVal: String) => {
+        session -= scentryConfig.returnToKey
+        returnToVal
+      }
+      case _ => url(rootPath)
+    }
+    redirect(returnTo)
+  }
+
+  def afterLogout(implicit request: HttpServletRequest, response: HttpServletResponse) {
+    flash("success") = "Signed out successfully"
+    redirect( url(rootPath) )
+  }
+
+  def checkAuthenticated {
+    if (isAuthenticated) {
+      flash("info") = "Already signed in"
+      redirect( backPath )
+    }
+  }
+
   override protected def registerAuthStrategies = {
     scentry.register("Sip2Auth", app => new Sip2Strategy(app))
   }

@@ -1,12 +1,9 @@
-@(
-  title: String = "Software Lending Library"
-)(
+@( title: String = "Software Lending Library" )(
   body: Html = Html("")
-)(
-  implicit context: com.github.kardeiz.sllapp.MainServlet
-)
+)( implicit context: MainServlet )
 
 @import context._
+@import scala.collection.JavaConverters._
 
 <!DOCTYPE html>
 <html lang="en">
@@ -51,7 +48,7 @@
               <li><a href="/reservations/available">Create reservation</a>
               @if( viewHelpers.isAuthenticated ) {
                 <li>
-                  <a href="@url(reservationsPath)">My reservations</a>
+                  <a href="@url(reservationsGet)">My reservations</a>
                 </li>
                 <li><a href="@url(authLogoutPath)">Sign out</a></li>
               } else {
@@ -63,11 +60,20 @@
       </nav>
 
       <div class="content">
-        @for( (tp, msg) <- flash ) {
+        @for( (tp, obj) <- flash ) {
           <div class="alert alert-@tp">
-            @msg match {
-              case s: String => {
-                <p>@s</p>
+            @obj match {
+              case msg: String => {
+                <p>@msg</p>
+              }
+              case seq: Seq[_] => {
+                @for( obj2 <- seq) {
+                  @obj2 match {
+                    case msg: String => {
+                      <p>@msg</p>
+                    }
+                  }
+                }
               }
               case _ => {}
             }
@@ -75,7 +81,19 @@
         }
         @body
         <pre>
+          @session.get(scentryConfig.returnToKey) match {
+            case Some(x) => { @x.toString }
+            case _ => { "NNOPE" }
+          }
+
+        </pre>
+        <pre>
           @flash.toString
+        </pre>
+        <pre>
+          @for( nm <- session.getAttributeNames.asScala) {
+            @nm || @session.getAttribute(nm).toString
+          }
         </pre>
       </div>
 

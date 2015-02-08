@@ -1,0 +1,39 @@
+@( reservationsWithResources: Seq[(Models.Reservation, Models.Resource)] )(
+  implicit context: MainServlet
+)
+@import com.github.kardeiz.sllapp._
+@import context._
+@import Models._
+
+@layouts.html.default("Reservations") {
+  <div>
+    <table class="table table-striped">
+      <tr>
+        <td>Start time</td>
+        <td>End time</td>
+        <td>Resource name</td>
+        <td>Resource IP address</td>
+        <td>Resource port</td>
+        <td>Actions</td>
+      </tr>
+      @if( reservationsWithResources.isEmpty ) {
+        <tr><td colspan="6">There's nothing here</td></tr>
+      }
+      @for( (re, rs) <- reservationsWithResources ) {
+        <tr>
+          <td>@re.startTime.toString(Schedule.formatBoth)</td>
+          <td>@re.endTime.toString(Schedule.formatBoth)</td>
+          <td>@rs.name</td>
+          <td>@rs.ip</td>
+          <td>@rs.port</td>
+          <td>
+            <form method="POST" action="@url(reservationDelete, "id" -> re.id.get.toString)">
+              <input type="hidden" name="_method" value="delete"/>
+              <button class="btn btn-danger">Delete</button>
+            </form>
+          </td>
+        </tr>
+      }
+    </table>
+  </div>
+}

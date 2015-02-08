@@ -9,17 +9,15 @@ class ScalatraBootstrap extends LifeCycle {
   
   val logger = LoggerFactory.getLogger(getClass)
 
-  val cpds = DatabaseHelper.buildDataSource
-
   override def init(context: ServletContext) {
-    val db = DatabaseHelper.setupDatabase(cpds)
-    DatabaseHelper.buildDatabaseTables(db)
-    context.mount(new MainServlet(db), "/*")
+    DatabaseAccess.touchDb
+    // DatabaseAccess.createSampleData
+    context.mount(new MainServlet, "/*")
   }
 
   override def destroy(context: ServletContext) {
     super.destroy(context)
-    cpds.close
+    DatabaseAccess.cpds.close
   }
 
 }

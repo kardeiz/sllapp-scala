@@ -3,6 +3,7 @@ import Keys._
 import org.scalatra.sbt._
 import org.scalatra.sbt.PluginKeys._
 import play.twirl.sbt.SbtTwirl
+import play.twirl.sbt.Import.TwirlKeys
 
 object SllappBuild extends Build {
   val Organization = "com.github.kardeiz"
@@ -19,9 +20,20 @@ object SllappBuild extends Build {
       name := Name,
       version := Version,
       scalaVersion := ScalaVersion,
+      initialCommands in console := """
+        |import com.github.kardeiz.sllapp._
+        |import DatabaseAccess._
+        |import Tables._
+        |import Models._
+        |import scala.slick.driver.H2Driver.simple._
+        |implicit def session = db.createSession
+        |""".stripMargin,
       resolvers ++= Seq(
         Classpaths.typesafeReleases,
         Resolver.mavenLocal
+      ),
+      TwirlKeys.templateImports in Compile ++= Seq(
+        "com.github.kardeiz.sllapp._"
       ),
       libraryDependencies ++= Seq(
         "org.scalatra" %% "scalatra" % ScalatraVersion,
