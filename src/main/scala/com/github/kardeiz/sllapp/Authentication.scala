@@ -6,7 +6,8 @@ import org.scalatra.auth.{ScentryConfig, ScentrySupport, ScentryStrategy}
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 import org.slf4j.LoggerFactory
 
-import Models._
+import LocalDriver.simple._
+import Tables._
 
 class Sip2Strategy(protected val app: ScalatraBase)(
   implicit request: HttpServletRequest, 
@@ -27,9 +28,13 @@ class Sip2Strategy(protected val app: ScalatraBase)(
 
   def authenticate()(implicit request: HttpServletRequest, response: HttpServletResponse): Option[User] = {
     if (sip2Response.isValidPatronPassword) {
-      val user = User.findOrCreate(uid) {
-        val (e, l, f) = Sip2Utils.extractData(sip2Response)
-        User(None, uid, Utils.passHash(pin), e, l, f)
+      val user = app.asInstanceOf[MainServlet].db.withSession { implicit s =>
+        users.findByUid(uid).firstOption.getOrElse {
+          val (e, l, f) = Sip2Utils.extractData(sip2Response)
+          val user  = User(None, uid, Utils.passHash(pin), e, l, f)
+          val id        = users.insert(user)
+          user.copy(id = Some(id))      
+        }
       }
       Some(user)
     } else None
@@ -50,7 +55,7 @@ trait AuthenticationSupport
   }
 
   protected def fromSession = { 
-    case id: String => User.findById(id.toInt).get
+    case id: String => db.withSession { implicit s => users.findById(id.toInt).first }
   }
 
   protected def toSession = { 

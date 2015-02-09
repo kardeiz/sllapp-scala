@@ -4,9 +4,13 @@ import org.scalatra._
 
 import org.joda.time._
 
-import Models._
+import scala.slick.jdbc.JdbcBackend.Database
+import org.quartz.Scheduler
 
-class MainServlet extends SllappStack {
+import LocalDriver.simple._
+import Tables._
+
+class MainServlet(implicit val db: Database, val scheduler: Scheduler) extends SllappStack {
 
   val rootPath = get("/") { 
     layouts.html.default()()(this)
@@ -14,28 +18,28 @@ class MainServlet extends SllappStack {
 
   val reservationsGet = get("/reservations") {
     requireLogin
-    val reservationsWithResources = 
-      userOption.map(_.reservationsWithResources).getOrElse(List.empty)
-    views.html.reservations(reservationsWithResources)(this)
+    views.html.reservations(user.reservationsWithResources)(this)
   }
 
   val reservationDelete = delete("/reservations/:id") {
-    params.getAs[Int]("id").foreach( Reservation.findById(_).foreach( _.delete ) )
+    params.getAs[Int]("id").foreach( id =>
+      db.withSession { implicit s => reservations.findById(id).delete }
+    )
     flash("success") = "Reservation deleted"
     redirect( url(reservationsGet) )
   }
 
   val reservationsPost = post("/reservations") {
     requireLogin
-    val optReservation = for {
-      resourceId <- params.getAs[Int]("resource_id")
-      resource   <- Resource.findById(resourceId)
-      startTime  <- params.get("start_time").map( Schedule.formatIso.parseDateTime(_) )
-      endTime    <- params.getAs[Int]("duration").map( d => startTime.plus( Period.hours(d) ) )
-      userId     <- userOption.flatMap(_.id)
-    } yield Reservation(None, userId, resourceId, startTime, endTime)
-    
-    optReservation.getOrElse( throw new Danger ).save
+    val reservation = (for {
+      resourceId  <- params.getAs[Int]("resource_id")
+      startTime   <- params.get("start_time").map( Schedule.formatIso.parseDateTime(_) )
+      endTime     <- params.getAs[Int]("duration").map( d => startTime.plus( Period.hours(d) ) )
+      userId      <- user.id
+      reservation =  Reservation(None, userId, resourceId, startTime, endTime)
+    } yield reservation).getOrElse( throw new Danger ).save
+
+    db.withSession { implicit s => reservations.insert(reservation) }    
 
     flash("success") = "Reservation created successfully"
     redirect( url(reservationsGet))
@@ -44,7 +48,9 @@ class MainServlet extends SllappStack {
   val availableReservationsPath = get("/reservations/available") {
     val schedule = {
       val date = params.get("date").map( Schedule.formatDate.parseDateTime(_) ).getOrElse(DateTime.now)
-      val resource = params.getAs[Int]("resource_id").flatMap( Resource.findById(_) )
+      val resource = params.getAs[Int]("resource_id").flatMap( rId => 
+        db.withSession { implicit s => resources.filter(_.id === rId).firstOption }
+      )
       Schedule(date, resource)
     }
     views.html.availableReservations(schedule)(this)

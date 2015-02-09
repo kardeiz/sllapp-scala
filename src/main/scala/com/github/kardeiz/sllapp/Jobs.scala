@@ -1,16 +1,29 @@
 package com.github.kardeiz.sllapp
 
-import org.quartz.JobBuilder;
-import org.quartz.JobDetail;
-import org.quartz.Scheduler;
-import org.quartz.SimpleScheduleBuilder;
-import org.quartz.Trigger;
-import org.quartz.TriggerBuilder;
-import org.quartz.impl.StdSchedulerFactory;
+import org.quartz.JobBuilder
+import org.quartz.JobDetail
+import org.quartz.Scheduler
+import org.quartz.SimpleScheduleBuilder
+import org.quartz.Trigger
+import org.quartz.TriggerBuilder
+import org.quartz.impl.StdSchedulerFactory
 
-import org.quartz.Job;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
+import org.quartz.Job
+import org.quartz.JobExecutionContext
+import org.quartz.JobExecutionException
+
+import org.quartz.ee.servlet.QuartzInitializerListener
+
+object SchedulerInit {
+
+  // def extractScheduler(context: javax.servlet.ServletContext) = {
+  //   Option(context.getAttribute(QuartzInitializerListener.QUARTZ_FACTORY_KEY) match {
+  //     case Some(factory: StdSchedulerFactory) => Option(factory.getScheduler("LocalScheduler"))
+  //     case _ => None
+  //   }.getOrElse(throw new Danger)
+  // }
+
+}
 
 
 class ReservationCreateJob extends Job {

@@ -3,7 +3,11 @@ package com.github.kardeiz.sllapp
 import org.joda.time._
 import org.joda.time.format._
 
+import scala.slick.jdbc.JdbcBackend.Database
+
 object LocalDriver extends scala.slick.driver.H2Driver
+
+import Tables._
 
 object Props {
 	
@@ -38,10 +42,15 @@ case class Danger(
   backTo: Option[String] = None
 ) extends Exception
 
-
 case class TimeSlot(startTime: DateTime, endTime: DateTime, available: Boolean)
 
-case class Schedule(date: DateTime = DateTime.now, optResource: Option[Models.Resource] = None) {
+case class Schedule(
+  date: DateTime = DateTime.now, 
+  optResource: Option[Resource] = None
+)(implicit db: Database) {
+
+  import LocalDriver.simple._
+  import DateConversions._
 
   val currentDate = DateTime.now
 
@@ -53,8 +62,13 @@ case class Schedule(date: DateTime = DateTime.now, optResource: Option[Models.Re
 
   val hoursOfDay = Schedule.iterateBetween(startTime, endTime)
 
-  val reservationsOfDay = 
-    Models.Reservation.forSchedule(this).getOrElse(List.empty)
+  val reservationsOfDay = optResource.flatMap(_.id).map( resourceId => 
+    db.withSession { implicit s =>
+      reservations.filter(r => 
+        r.startTime < endTime && r.endTime > startTime && r.resourceId === resourceId
+      ).run
+    }
+  ).getOrElse(List.empty)
 
   val timeSlots = hoursOfDay.map { hour =>
     val available = !reservationsOfDay.exists( res =>

@@ -16,23 +16,13 @@ trait DateConversions {
   )
 }
 
-trait DatabaseExtensions extends DateConversions {
+object DateConversions extends DateConversions
 
-  implicit class ReservationExt[C[_]](q: Query[Tables.Reservations, Models.Reservation, C]) {
-    def overlapping(st: DateTime, et: DateTime) = q.filter(x => x.startTime < et && x.endTime > st)
-    def forResource(r: Models.Resource) = q.filter(_.resourceId === r.id)
-    def forUser(u: Models.User) = q.filter(_.userId === u.id)
-  }
-
-}
-object DatabaseExtensions extends DatabaseExtensions
-
-object DatabaseAccess {
+object DatabaseInit {
 
   import Props.Db
-  import Tables._
 
-  lazy val cpds = {
+  def buildCpds = {
     val cpds = new ComboPooledDataSource
     cpds.setDriverClass( Db.Driver )
     cpds.setJdbcUrl( Db.Url )
@@ -41,40 +31,11 @@ object DatabaseAccess {
     cpds
   }
 
-  lazy val db = Database.forDataSource(cpds)
-
-  def touchDb { db }
-
-  def createTables {
-    db.withSession { implicit session =>
-      ( users.ddl ++ resources.ddl ++ reservations.ddl ).create
-    }
-  }
-
-  def createSampleData {
-    createTables
-    val resource1 = Models.Resource(None, "something", "10001", "3000")
-    val resource2 = Models.Resource(None, "somethingElse", "10001", "3000")
-    val user     = Models.User(None, "user", "pin")
-    val reservation = {
-      val d1 = DateTime.now
-      val d2 = d1.withTime(d1.getHourOfDay, 0, 0, 0)
-      val d3 = d2.plus(Period.hours(2))
-      Models.Reservation(None, 1, 1, d2, d3)
-    }
-    db.withSession { implicit session =>
-      users.insert(user)
-      resources.insertAll(resource1, resource2)
-      reservations.insert(reservation)
-    }
-  }
+  def buildDbFor(cpds: ComboPooledDataSource) = Database.forDataSource(cpds)
 
 }
 
-
-object Models extends DateConversions with DatabaseExtensions {
-
-  import DatabaseAccess._
+object Tables extends DateConversions {
 
   case class User(
     id: Option[Int],
@@ -83,114 +44,11 @@ object Models extends DateConversions with DatabaseExtensions {
     email: Option[String] = None,
     lastName: Option[String] = None,
     firstName: Option[String] = None
-  ) {
-
-    def reservationsWithResources = db.withSession { implicit session =>
-      Reservation.scoped.forUser(this).join(Resource.scoped).on(_.resourceId === _.id).run
-    }
-
-  }
+  )
 
   object User {
-
-    def scoped = Tables.users
-    def all = db.withSession { implicit session => scoped.run }
-    def findById(id: Int) = db.withSession { implicit session =>
-      scoped.filter(_.id === id).take(1).firstOption
-    }
-    def findOrCreate(uid: String)(f: => User) = db.withSession { implicit session =>
-      scoped.filter(_.uid === uid).firstOption match {
-        case Some(user: User) => user
-        case _ => {
-          val user = f
-          val id   = Tables.users.insert(user)
-          user.copy(id = Some(id))
-        }
-      }
-    }
+    def all(implicit db: Database) = db.withSession { implicit s => users.run }
   }
-
-  case class Resource(
-    id: Option[Int],
-    name: String,
-    ip: String,
-    port: String,
-    tpe: Option[String] = None,
-    description: Option[String] = None
-  ) {
-
-    def reservations = db.withSession { implicit session => Reservation.scoped.forResource(this).run }
-
-  }
-
-  object Resource {
-    def scoped = Tables.resources
-    def all    = db.withSession { implicit session => scoped.run }
-    def findById(id: Int) = db.withSession { implicit session =>
-      scoped.filter(_.id === id).take(1).firstOption
-    }
-  }
-
-
-  case class Reservation(
-    id: Option[Int],
-    userId: Int,
-    resourceId: Int,
-    startTime: DateTime,
-    endTime: DateTime,
-    description: Option[String] = None
-  ) {
-
-    def overlappingReservationsCount = db.withSession { implicit session => 
-      Reservation.scoped.overlapping(startTime, endTime).filter(_.resourceId === resourceId).length.run
-    }
-
-    def errors = {
-      val errors = ArrayBuffer[String]()
-      if ( endTime.isBefore(DateTime.now) ) errors += "Reservations must end in the future"
-      if ( Hours.hoursBetween(startTime, endTime).getHours > 3 )
-        errors += "Reservations cannot last more than 3 hours"
-      if ( overlappingReservationsCount > 0 )
-        errors += "Reservation overlaps with another"
-      errors.toSeq
-    }
-
-    def save = {
-      val errs = errors
-      if ( errs.isEmpty ) {
-        val id = db.withSession { implicit session => Reservation.scoped.insert(this) }
-        this.copy(id = Some(id))
-      } else throw new Danger(errs)
-    }
-
-    def delete = {
-      db.withSession { implicit session => 
-        Reservation.scoped.filter(_.id === this.id).delete
-      }
-      this.copy(id = None)
-    }
-
-  }
-
-  object Reservation {
-    def scoped = Tables.reservations
-    def all    = db.withSession { implicit session => scoped.run }
-    def findById(id: Int) = db.withSession { implicit session =>
-      scoped.filter(_.id === id).take(1).firstOption
-    }
-    def forSchedule(schedule: Schedule) = schedule.optResource.map( resource =>
-      db.withSession { implicit session => 
-        scoped.overlapping(schedule.startTime, schedule.endTime).forResource(resource).run
-      }
-    )
-  }
-
-}
-
-
-object Tables extends DateConversions {
-
-  import Models._
 
   class Users(tag: Tag) extends Table[User](tag, "users") {
     def id           = column[Int]("id", O.PrimaryKey, O.AutoInc)
@@ -206,7 +64,23 @@ object Tables extends DateConversions {
       ( (User.apply _).tupled, User.unapply )
   }
 
-  val users = TableQuery[Users]
+  object users extends TableQuery(new Users(_)) {
+    val findById  = this.findBy(_.id)
+    val findByUid = this.findBy(_.uid)
+  }
+
+  case class Resource(
+    id: Option[Int],
+    name: String,
+    ip: String,
+    port: String,
+    tpe: Option[String] = None,
+    description: Option[String] = None
+  )
+
+  object Resource {
+    def all(implicit db: Database) = db.withSession { implicit s => resources.run }
+  }
 
   class Resources(tag: Tag) extends Table[Resource](tag, "resources") {
     def id          = column[Int]("id", O.PrimaryKey, O.AutoInc)
@@ -220,10 +94,26 @@ object Tables extends DateConversions {
       ( (Resource.apply _).tupled, Resource.unapply )
   }
 
-  val resources = TableQuery[Resources]
+  object resources extends TableQuery(new Resources(_)) {
+    val findById  = this.findBy(_.id)
+  }
+
+  case class Reservation(
+    id: Option[Int],
+    userId: Int,
+    resourceId: Int,
+    startTime: DateTime,
+    endTime: DateTime,
+    description: Option[String] = None
+  )
+
+  object Reservation {
+    def all(implicit db: Database) = db.withSession { implicit s => reservations.run }
+  }
 
   class Reservations(tag: Tag)
     extends Table[Reservation](tag, "reservations") {
+    
     def id          = column[Int]("id", O.PrimaryKey, O.AutoInc)
     def userId      = column[Int]("user_id")
     def resourceId  = column[Int]("resource_id")
@@ -238,6 +128,62 @@ object Tables extends DateConversions {
     def user     = foreignKey("user_id", userId, users)(_.id)
   }
 
-  val reservations = TableQuery[Reservations]
+  object reservations extends TableQuery(new Reservations(_)) {
+    val findById  = this.findBy(_.id)
+
+    def overlapping(st: DateTime, et: DateTime, rId: Int) = this.filter( r => 
+      r.startTime < et && r.endTime > st && r.resourceId === rId
+    )
+
+  }
+
+
+  trait RichModels extends DateConversions {
+
+    def db: Database
+
+    implicit class RichUser(user: User) {
+      def reservationsWithResources = user.id.map( id =>
+        db.withSession { implicit s =>
+          val query = for {
+            re <- reservations if re.userId === id
+            rs <- re.resource
+          } yield (re, rs)
+          query.run
+        }
+      ).getOrElse(List.empty)      
+    }
+
+    implicit class RichReservation(rsv: Reservation) {
+
+      def overlappingReservationsCount = db.withSession { implicit s => 
+        reservations.overlapping(rsv.startTime, rsv.endTime, rsv.resourceId).length.run
+      }
+
+      def errors = {
+        val errors = ArrayBuffer[String]()
+        if ( rsv.endTime.isBefore(DateTime.now) ) errors += "Reservations must end in the future"
+        if ( Hours.hoursBetween(rsv.startTime, rsv.endTime).getHours > 3 )
+          errors += "Reservations cannot last more than 3 hours"
+        if ( rsv.overlappingReservationsCount > 0 )
+          errors += "Reservation overlaps with another"
+        errors.toSeq
+      }
+
+      def save = {
+        val errs = rsv.errors
+        if ( errs.isEmpty ) {
+          val id = db.withSession { implicit s => reservations.insert(rsv) }
+          rsv.copy(id = Some(id))
+        } else throw new Danger(errs)
+      }
+
+      def delete = db.withSession { implicit session => 
+        reservations.filter(_.id === rsv.id).delete
+      }
+    }
+  }
+
 
 }
+
