@@ -43,6 +43,20 @@ class ReservationCreateJob extends Job {
 
 }
 
+object JobUtil {
+  import Tables._
+  import LocalDriver.simple._
+  
+  def createReservation(reservation: Reservation, user: User)(implicit scheduler: Scheduler) = {
+    val job = JobBuilder.newJob(classOf[ReservationCreateJob]).build
+    val trg = TriggerBuilder.newTrigger.withIdentity(
+      "create", s"${user.id.get}-${reservation.id.get}"
+    ).startAt(reservation.startTime.toDate).build
+    scheduler.scheduleJob(job, trg)
+  }
+  
+}
+
 object JobRunner {
 
   def job = JobBuilder.newJob(classOf[ReservationCreateJob]).
