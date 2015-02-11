@@ -20,19 +20,28 @@ object DateConversions extends DateConversions
 
 object DatabaseInit {
 
-  import Props.Db
+  import Props.Db._
 
   def buildCpds = {
     val cpds = new ComboPooledDataSource
-    cpds.setDriverClass( Db.Driver )
-    cpds.setJdbcUrl( Db.Url )
-    cpds.setUser( Db.User )
-    cpds.setPassword( Db.Password )
+    cpds.setDriverClass( Driver )
+    cpds.setJdbcUrl( Url )
+    cpds.setUser( User )
+    cpds.setPassword( Password )
     cpds
   }
 
   def buildDbFor(cpds: ComboPooledDataSource) = Database.forDataSource(cpds)
 
+  def buildTables = {
+    import Tables._
+    val ds = buildCpds
+    val db = buildDbFor(ds)
+    db.withSession { implicit s => 
+      ( reservations.ddl ++ users.ddl ++ resources.ddl ).create
+    }
+    ds.close
+  }
 }
 
 object Tables extends DateConversions {
@@ -131,9 +140,10 @@ object Tables extends DateConversions {
   object reservations extends TableQuery(new Reservations(_)) {
     val findById  = this.findBy(_.id)
 
-    def overlapping(st: DateTime, et: DateTime, rId: Int) = this.filter( r => 
+    def overlapping(st: Column[DateTime], et: Column[DateTime], rId: Column[Int]) = this.filter( r => 
       r.startTime < et && r.endTime > st && r.resourceId === rId
     )
+
 
   }
 

@@ -9,6 +9,7 @@
     That class should implement org.scalatra.LifeCycle.  Your app can be
     configured in Scala code there.
   -->
+  <!-- 
   <context-param>
     <param-name>quartz:config-file</param-name>
     <param-value>quartz.properties</param-value>
@@ -24,10 +25,13 @@
   <context-param>
     <param-name>quartz:start-scheduler-on-load</param-name>
     <param-value>true</param-value>
-  </context-param>
+  </context-param> 
+  -->
+  <!-- 
   <listener>
     <listener-class>org.quartz.ee.servlet.QuartzInitializerListener</listener-class>
   </listener>
+  -->
   <listener>
     <listener-class>org.scalatra.servlet.ScalatraListener</listener-class>
   </listener>

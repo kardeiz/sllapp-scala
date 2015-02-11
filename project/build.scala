@@ -22,11 +22,8 @@ object SllappBuild extends Build {
       scalaVersion := ScalaVersion,
       initialCommands in console := """
         |import com.github.kardeiz.sllapp._
-        |import DatabaseAccess._
         |import Tables._
-        |import Models._
-        |import scala.slick.driver.H2Driver.simple._
-        |implicit def session = db.createSession
+        |import LocalDriver.simple._
         |""".stripMargin,
       resolvers ++= Seq(
         Classpaths.typesafeReleases,

@@ -16,20 +16,29 @@ import org.quartz.ee.servlet.QuartzInitializerListener
 
 object SchedulerInit {
 
-  // def extractScheduler(context: javax.servlet.ServletContext) = {
-  //   Option(context.getAttribute(QuartzInitializerListener.QUARTZ_FACTORY_KEY) match {
-  //     case Some(factory: StdSchedulerFactory) => Option(factory.getScheduler("LocalScheduler"))
-  //     case _ => None
-  //   }.getOrElse(throw new Danger)
-  // }
+  lazy val config = {
+    val props = new java.util.Properties
+    props.setProperty("org.quartz.threadPool.threadCount", "5")
+    props.setProperty("org.quartz.threadPool.class", "org.quartz.simpl.SimpleThreadPool")
+    props.setProperty("org.quartz.jobStore.class", "org.quartz.simpl.RAMJobStore")
+    props.setProperty("org.quartz.scheduler.skipUpdateCheck", "true")
+    props.setProperty("org.quartz.scheduler.jobFactory.class", "org.quartz.simpl.SimpleJobFactory")
+    props
+  }
+
+  def buildScheduler = (new StdSchedulerFactory(config)).getScheduler
 
 }
 
 
 class ReservationCreateJob extends Job {
 
+  import org.slf4j.LoggerFactory
+
+  val logger = LoggerFactory.getLogger(getClass)
+
   def execute(context: JobExecutionContext) {
-    println("Hello Quartz!");
+    logger.info("Hello")
   }
 
 }
@@ -44,9 +53,7 @@ object JobRunner {
       SimpleScheduleBuilder.simpleSchedule.withIntervalInSeconds(5).repeatForever
     ).build
 
-  def apply = {
-    val scheduler = (new StdSchedulerFactory).getScheduler
-    scheduler.start
+  def apply(scheduler: Scheduler) = {
     scheduler.scheduleJob(job, trigger)
   }
 

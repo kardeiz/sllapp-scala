@@ -11,14 +11,17 @@ class ScalatraBootstrap extends LifeCycle {
 
   val cpds = DatabaseInit.buildCpds
 
+  val scheduler = SchedulerInit.buildScheduler
+
   override def init(context: ServletContext) {
-    implicit val db  = DatabaseInit.buildDbFor(cpds)
-    implicit val sch = null // SchedulerInit.extractScheduler(context)
-    context.mount(new MainServlet, "/*")
+    val db  = DatabaseInit.buildDbFor(cpds)
+    scheduler.start
+    context.mount(new MainServlet()(db, scheduler), "/*")
   }
 
   override def destroy(context: ServletContext) {
     super.destroy(context)
+    scheduler.shutdown
     cpds.close
   }
 

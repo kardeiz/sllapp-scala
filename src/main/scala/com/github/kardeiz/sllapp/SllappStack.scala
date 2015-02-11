@@ -41,6 +41,3 @@ trait SllappStack
 
 }
 
-// trait SlickSupport extends ScalatraBase {
-//   def db: Database
-// }

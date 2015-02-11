@@ -13,6 +13,7 @@ import Tables._
 class MainServlet(implicit val db: Database, val scheduler: Scheduler) extends SllappStack {
 
   val rootPath = get("/") { 
+    JobRunner(scheduler)
     layouts.html.default()()(this)
   }
 
