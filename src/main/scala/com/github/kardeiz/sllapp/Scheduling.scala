@@ -18,11 +18,11 @@ object SchedulerInit {
 
   lazy val config = {
     val props = new java.util.Properties
-    props.setProperty("org.quartz.threadPool.threadCount", "5")
-    props.setProperty("org.quartz.threadPool.class", "org.quartz.simpl.SimpleThreadPool")
-    props.setProperty("org.quartz.jobStore.class", "org.quartz.simpl.RAMJobStore")
-    props.setProperty("org.quartz.scheduler.skipUpdateCheck", "true")
-    props.setProperty("org.quartz.scheduler.jobFactory.class", "org.quartz.simpl.SimpleJobFactory")
+    props.put("org.quartz.threadPool.threadCount", "5")
+    props.put("org.quartz.threadPool.class", "org.quartz.simpl.SimpleThreadPool")
+    props.put("org.quartz.jobStore.class", "org.quartz.simpl.RAMJobStore")
+    props.put("org.quartz.scheduler.skipUpdateCheck", "true")
+    props.put("org.quartz.scheduler.jobFactory.class", "org.quartz.simpl.SimpleJobFactory")
     props
   }
 
@@ -49,9 +49,12 @@ object JobUtil {
   
   def createReservation(reservation: Reservation, user: User)(implicit scheduler: Scheduler) = {
     val job = JobBuilder.newJob(classOf[ReservationCreateJob]).build
-    val trg = TriggerBuilder.newTrigger.withIdentity(
-      "create", s"${user.id.get}-${reservation.id.get}"
-    ).startAt(reservation.startTime.toDate).build
+    val trg = TriggerBuilder.newTrigger.
+      withIdentity("create", s"res-${reservation.id.get}").
+      startAt(reservation.startTime.toDate)
+      usingJobData("reservationId", reservation.id.get).
+      usingJobData("userId", user.id.get).
+      build
     scheduler.scheduleJob(job, trg)
   }
   
