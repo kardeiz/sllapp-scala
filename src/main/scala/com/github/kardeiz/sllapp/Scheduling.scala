@@ -52,8 +52,8 @@ object JobUtil {
     val trg = ( TriggerBuilder.newTrigger
       .withIdentity("create", s"res-${reservation.id.get}")
       .startAt(reservation.startTime.toDate)
-      .usingJobData("reservationId", reservation.id.get)
-      .usingJobData("userId", user.id.get)
+      .usingJobData("reservationId", reservation.id.get.toString)
+      .usingJobData("userId", user.id.get.toString)
       .build )
     scheduler.scheduleJob(job, trg)
   }
