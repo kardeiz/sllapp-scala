@@ -38,6 +38,8 @@ class ReservationCreateJob extends Job {
   val logger = LoggerFactory.getLogger(getClass)
 
   def execute(context: JobExecutionContext) {
+    val userId = context.getMergedJobDataMap.getIntFromString("userId")
+    val reservationId = context.getMergedJobDataMap.getIntFromString("userId")
     logger.info("Hello")
   }
 
