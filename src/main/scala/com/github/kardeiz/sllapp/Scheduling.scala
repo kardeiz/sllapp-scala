@@ -49,12 +49,12 @@ object JobUtil {
   
   def createReservation(reservation: Reservation, user: User)(implicit scheduler: Scheduler) = {
     val job = JobBuilder.newJob(classOf[ReservationCreateJob]).build
-    val trg = TriggerBuilder.newTrigger.
-      withIdentity("create", s"res-${reservation.id.get}").
-      startAt(reservation.startTime.toDate)
-      usingJobData("reservationId", reservation.id.get).
-      usingJobData("userId", user.id.get).
-      build
+    val trg = ( TriggerBuilder.newTrigger
+      .withIdentity("create", s"res-${reservation.id.get}")
+      .startAt(reservation.startTime.toDate)
+      .usingJobData("reservationId", reservation.id.get)
+      .usingJobData("userId", user.id.get)
+      .build )
     scheduler.scheduleJob(job, trg)
   }
   
