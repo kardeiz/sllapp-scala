@@ -9,20 +9,17 @@ class ScalatraBootstrap extends LifeCycle {
   
   val logger = LoggerFactory.getLogger(getClass)
 
-  val cpds = DatabaseInit.buildCpds
-
-  val scheduler = SchedulerInit.buildScheduler
-
   override def init(context: ServletContext) {
-    val db  = DatabaseInit.buildDbFor(cpds)
-    scheduler.start
-    context.mount(new MainServlet()(db, scheduler), "/*")
+    context.initParameters("org.scalatra.environment") = Settings.appEnv
+    DatabaseAccess.startup
+    SchedulerAccess.startup
+    context.mount(new MainServlet, "/*")
   }
 
   override def destroy(context: ServletContext) {
     super.destroy(context)
-    scheduler.shutdown
-    cpds.close
+    SchedulerAccess.shutdown
+    DatabaseAccess.shutdown
   }
 
 }

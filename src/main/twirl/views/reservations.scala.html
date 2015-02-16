@@ -1,9 +1,9 @@
-@( reservationsWithResources: Seq[(Tables.Reservation, Tables.Resource)] )(
+@( reservationsWithResources: Seq[(Models.Reservation, Models.Resource)] )(
   implicit context: MainServlet
 )
 @import com.github.kardeiz.sllapp._
 @import context._
-@import Tables._
+@import Models._
 
 @layouts.html.default("Reservations") {
   <div>

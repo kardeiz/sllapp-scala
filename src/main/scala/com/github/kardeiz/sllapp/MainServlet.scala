@@ -8,12 +8,14 @@ import scala.slick.jdbc.JdbcBackend.Database
 import org.quartz.Scheduler
 
 import LocalDriver.simple._
-import Tables._
+import Models._
 
-class MainServlet(implicit val db: Database, val scheduler: Scheduler) extends SllappStack {
+class MainServlet extends SllappStack {
+
+  import DatabaseAccess.db
 
   val rootPath = get("/") { 
-    JobRunner(scheduler)
+    // JobRunner(scheduler)
     layouts.html.default()()(this)
   }
 
@@ -23,9 +25,7 @@ class MainServlet(implicit val db: Database, val scheduler: Scheduler) extends S
   }
 
   val reservationDelete = delete("/reservations/:id") {
-    params.getAs[Int]("id").foreach( id =>
-      db.withSession { implicit s => reservations.findById(id).delete }
-    )
+    params.getAs[Int]("id").foreach( Reservation.findById(_).foreach( _.delete ) )
     flash("success") = "Reservation deleted"
     redirect( url(reservationsGet) )
   }
@@ -37,10 +37,9 @@ class MainServlet(implicit val db: Database, val scheduler: Scheduler) extends S
       startTime   <- params.get("start_time").map( Schedule.formatIso.parseDateTime(_) )
       endTime     <- params.getAs[Int]("duration").map( d => startTime.plus( Period.hours(d) ) )
       userId      <- user.id
-      reservation =  Reservation(None, userId, resourceId, startTime, endTime)
-    } yield reservation).getOrElse( throw new Danger ).save
+    } yield Reservation(None, userId, resourceId, startTime, endTime) ).getOrElse( throw new Danger )
 
-    db.withSession { implicit s => reservations.insert(reservation) }    
+    reservation.save
 
     flash("success") = "Reservation created successfully"
     redirect( url(reservationsGet))
@@ -49,9 +48,7 @@ class MainServlet(implicit val db: Database, val scheduler: Scheduler) extends S
   val availableReservationsPath = get("/reservations/available") {
     val schedule = {
       val date = params.get("date").map( Schedule.formatDate.parseDateTime(_) ).getOrElse(DateTime.now)
-      val resource = params.getAs[Int]("resource_id").flatMap( rId => 
-        db.withSession { implicit s => resources.filter(_.id === rId).firstOption }
-      )
+      val resource = params.getAs[Int]("resource_id").flatMap( rId => Resource.findById(rId) )
       Schedule(date, resource)
     }
     views.html.availableReservations(schedule)(this)

@@ -43,11 +43,12 @@ object SllappBuild extends Build {
         "com.pkrete" % "jsip2" % "1.1.0",
         "com.typesafe.slick" %% "slick" % "2.1.0",
         "com.h2database" % "h2" % "1.4.185",
-        "c3p0" % "c3p0" % "0.9.1.2",
+        "com.mchange" % "c3p0" % "0.9.5",
         "org.scalatra" %% "scalatra-auth" % "2.4.0.M2",
         "org.virtualbox_4_3" % "vboxjws" % "4.3.0",
         "joda-time" % "joda-time" % "2.7",
-        "org.quartz-scheduler" % "quartz" % "2.2.1"
+        "org.quartz-scheduler" % "quartz" % "2.2.1",
+        "com.typesafe" % "config" % "1.2.1"
       )
     )
   ).enablePlugins(SbtTwirl)

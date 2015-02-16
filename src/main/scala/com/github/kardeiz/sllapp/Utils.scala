@@ -5,35 +5,30 @@ import org.joda.time.format._
 
 import scala.slick.jdbc.JdbcBackend.Database
 
+import com.typesafe.config.Config
+import com.typesafe.config.ConfigFactory
+
+import scala.collection.JavaConverters._
+
 object LocalDriver extends scala.slick.driver.H2Driver
 
-import Tables._
+import Models._
 
-object Props {
-	
-  object Sip2 {
-    val Host = sys.env.getOrElse("SIP2_HOST", "localhost")
-    val Ao   = sys.env.getOrElse("SIP2_AO", "undefined")
-    val Port = sys.env.getOrElse("SIP2_PORT", "6006").toInt
-  }
-  
-  object Db {
-    val Driver   = "org.h2.Driver"
-    val Url      = sys.env.getOrElse("DB_URL", "jdbc:h2:mem:test")
-    val User     = sys.env.getOrElse("DB_USER", "root")
-    val Password = sys.env.getOrElse("DB_PASSWORD", "pass")
-  }
+object Settings {
 
-  object Demo {
-    val UserUid = sys.env.getOrElse("USER_UID", null)
-    val UserPin = sys.env.getOrElse("USER_PIN", null)
+  lazy val config = ConfigFactory.load
+  lazy val appEnv = config.getString("app.env")
+  lazy val sip2   = config.getConfig("sip2")
+  lazy val vbox   = config.getConfig("vbox")
+
+  lazy val quartzProperties = {
+    val props  = new java.util.Properties
+    config.getConfig("org.quartz").entrySet.asScala.foreach( k =>
+      props.put("org.quartz." + k.getKey, k.getValue.unwrapped)
+    )
+    props
   }
 
-  object Vbox {
-    val Url      = sys.env.getOrElse("VBOX_URL", null)
-    val User     = sys.env.getOrElse("VBOX_USER", null)
-    val Password = sys.env.getOrElse("VBOX_PASSWORD", null)
-  }
 
 }
 
@@ -47,27 +42,21 @@ case class TimeSlot(startTime: DateTime, endTime: DateTime, available: Boolean)
 case class Schedule(
   date: DateTime = DateTime.now, 
   optResource: Option[Resource] = None
-)(implicit db: Database) {
-
-  import LocalDriver.simple._
-  import DateConversions._
+) {
 
   val currentDate = DateTime.now
 
   val startTime = if (date.toLocalDate == currentDate.toLocalDate)
     currentDate.withTime(currentDate.getHourOfDay, 0, 0, 0)
-  else date.withTimeAtStartOfDay
+  else 
+    date.withTimeAtStartOfDay
 
   val endTime = date.withTimeAtStartOfDay.plus(Period.days(1))
 
   val hoursOfDay = Schedule.iterateBetween(startTime, endTime)
 
-  val reservationsOfDay = optResource.flatMap(_.id).map( resourceId => 
-    db.withSession { implicit s =>
-      reservations.filter(r => 
-        r.startTime < endTime && r.endTime > startTime && r.resourceId === resourceId
-      ).run
-    }
+  val reservationsOfDay = optResource.flatMap(_.id).map(
+    Reservation.overlapping(startTime, endTime, _)
   ).getOrElse(List.empty)
 
   val timeSlots = hoursOfDay.map { hour =>
@@ -107,13 +96,15 @@ object Utils {
 
 object Sip2Utils {
   
-  import Props.Sip2._
-
   import com.pkrete.jsip2.connection.SIP2SocketConnection
   import com.pkrete.jsip2.messages._
   import com.pkrete.jsip2.messages.requests._
   import com.pkrete.jsip2.messages.responses._
   import com.pkrete.jsip2.variables._
+
+  val Host = Settings.sip2.getString("host")
+  val Port = Settings.sip2.getInt("port")
+  val Ao   = Settings.sip2.getString("ao")
 
   def buildConnection = new SIP2SocketConnection(Host, Port)
 
@@ -150,8 +141,11 @@ object Sip2Utils {
 
 object VboxUtils {
 
-  import Props.Vbox._
   import org.virtualbox_4_3._
+
+  val Url      = Settings.vbox.getString("url")
+  val User     = Settings.vbox.getString("user")
+  val Password = Settings.vbox.getString("password")
 
   def buildManager = VirtualBoxManager.createInstance(null)
 

@@ -14,19 +14,25 @@ import org.quartz.JobExecutionException
 
 import org.quartz.ee.servlet.QuartzInitializerListener
 
-object SchedulerInit {
+import Models._
 
-  lazy val config = {
-    val props = new java.util.Properties
-    props.put("org.quartz.threadPool.threadCount", "5")
-    props.put("org.quartz.threadPool.class", "org.quartz.simpl.SimpleThreadPool")
-    props.put("org.quartz.jobStore.class", "org.quartz.simpl.RAMJobStore")
-    props.put("org.quartz.scheduler.skipUpdateCheck", "true")
-    props.put("org.quartz.scheduler.jobFactory.class", "org.quartz.simpl.SimpleJobFactory")
-    props
+object SchedulerAccess {
+
+  private var _scheduler: Option[Scheduler] = None
+
+  def scheduler = _scheduler.getOrElse(throw new Exception("Not initialized"))
+
+  def startup {
+    val factory   = new StdSchedulerFactory(Settings.quartzProperties)
+    val scheduler = factory.getScheduler
+    scheduler.start
+    _scheduler = Some(scheduler)
   }
 
-  def buildScheduler = (new StdSchedulerFactory(config)).getScheduler
+  def shutdown {
+    _scheduler.foreach( _.shutdown(false) )
+    _scheduler = None
+  }
 
 }
 
@@ -38,26 +44,30 @@ class ReservationCreateJob extends Job {
   val logger = LoggerFactory.getLogger(getClass)
 
   def execute(context: JobExecutionContext) {
-    val userId = context.getMergedJobDataMap.getIntFromString("userId")
-    val reservationId = context.getMergedJobDataMap.getIntFromString("userId")
-    logger.info("Hello")
+    val reservationId = context.getMergedJobDataMap.getIntFromString("reservationId")
+    Reservation.findByIdPreload(reservationId) match {
+      case Some( (re, rs, us ) )  => {
+        logger.info(us.email.getOrElse("No email"))
+        logger.info(rs.name)
+        logger.info("Hello")
+      }
+      case _ => logger.info("Reservation not found")
+    }
+    
   }
 
 }
 
 object JobUtil {
-  import Tables._
-  import LocalDriver.simple._
   
-  def createReservation(reservation: Reservation, user: User)(implicit scheduler: Scheduler) = {
+  def createReservation(reservation: Reservation) = {
     val job = JobBuilder.newJob(classOf[ReservationCreateJob]).build
     val trg = ( TriggerBuilder.newTrigger
       .withIdentity("create", s"res-${reservation.id.get}")
       .startAt(reservation.startTime.toDate)
       .usingJobData("reservationId", reservation.id.get.toString)
-      .usingJobData("userId", user.id.get.toString)
       .build )
-    scheduler.scheduleJob(job, trg)
+    SchedulerAccess.scheduler.scheduleJob(job, trg)
   }
   
 }

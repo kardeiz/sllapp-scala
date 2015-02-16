@@ -9,8 +9,7 @@ trait SllappStack
   with FlashMapSupport 
   with UrlGeneratorSupport
   with AuthenticationSupport 
-  with MethodOverride 
-  with Tables.RichModels { self: MainServlet => 
+  with MethodOverride { self: MainServlet => 
 
   notFound {
     contentType = null

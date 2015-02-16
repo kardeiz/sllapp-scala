@@ -7,7 +7,7 @@ import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 import org.slf4j.LoggerFactory
 
 import LocalDriver.simple._
-import Tables._
+import Models._
 
 class Sip2Strategy(protected val app: ScalatraBase)(
   implicit request: HttpServletRequest, 
@@ -28,13 +28,9 @@ class Sip2Strategy(protected val app: ScalatraBase)(
 
   def authenticate()(implicit request: HttpServletRequest, response: HttpServletResponse): Option[User] = {
     if (sip2Response.isValidPatronPassword) {
-      val user = app.asInstanceOf[MainServlet].db.withSession { implicit s =>
-        users.findByUid(uid).firstOption.getOrElse {
-          val (e, l, f) = Sip2Utils.extractData(sip2Response)
-          val user  = User(None, uid, Utils.passHash(pin), e, l, f)
-          val id        = users.insert(user)
-          user.copy(id = Some(id))      
-        }
+      val user = User.findOrCreateByUid(uid) {
+        val (e, l, f) = Sip2Utils.extractData(sip2Response)
+        User(None, uid, Utils.passHash(pin), e, l, f)  
       }
       Some(user)
     } else None
@@ -55,7 +51,7 @@ trait AuthenticationSupport
   }
 
   protected def fromSession = { 
-    case id: String => db.withSession { implicit s => users.findById(id.toInt).first }
+    case id: String => User.findById(id.toInt).get
   }
 
   protected def toSession = { 
