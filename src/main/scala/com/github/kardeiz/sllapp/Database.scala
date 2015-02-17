@@ -52,7 +52,7 @@ object DatabaseAccess {
 
   def addSampleData {
     db.withSession { implicit s =>
-      val resource = Models.Resource(None, "desktop", "127.0.0.1", "5300")
+      val resource = Models.Resource(None, "ubuntu", "127.0.0.1", "5300")
       Tables.resources.insert(resource)
     }
   }
@@ -149,6 +149,7 @@ object Models {
 
     def afterSave(persisted: Reservation) {
       JobUtil.createReservation(persisted)
+      JobUtil.destroyReservation(persisted)
     }
 
     def save = {

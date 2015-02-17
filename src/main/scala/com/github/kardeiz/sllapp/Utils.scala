@@ -120,12 +120,13 @@ object Sip2Utils {
     val email = Option(response.getEmail).flatMap(
       _.split("\\s*,\\s*").toList.headOption
     )
-    Option(response.getPersonalName).map(
+    val (lastName, firstName) = Option(response.getPersonalName).map(
       _.split("\\s*,\\s*").toList
     ) match {
-      case Some(ln :: fn :: Nil) => ( email, Option(ln), Option(fn))
-      case _ => ( email, None, None ) 
-    }   
+      case Some(ln :: fn :: Nil) => ( Option(ln), Option(fn))
+      case _ => ( None, None ) 
+    }
+    ( email, lastName, firstName )
   }
 
   def makePatronInfoRequest(uid: String, pin: String) = {    
@@ -142,6 +143,7 @@ object Sip2Utils {
 object VboxUtils {
 
   import org.virtualbox_4_3._
+  import Models._
 
   val Url      = Settings.vbox.getString("url")
   val User     = Settings.vbox.getString("user")
@@ -158,22 +160,36 @@ object VboxUtils {
     result
   }
 
-  // def createReservation(user: Tables.User, resource: Tables.Resource) = {
-  //   process { manager => 
-  //     val machine = manager.getVBox.findMachine(resource.name)
-  //     val session = manager.getSessionObject
-  //     machine.lockMachine(session, LockType.Write)
-  //     val mutable = session.getMachine
-  //     mutable.setExtraData(
-  //       s"VBoxAuthSimple/users/${user.uid}",
-  //       user.encryptedPin
-  //     )
-  //     mutable.saveSettings
-  //     session.unlockMachine
-  //     val progress = machine.launchVMProcess(session, "headless", null)
-  //     progress.waitForCompletion(-1)
-  //     session.unlockMachine
-  //   }
-  // }
+  def createReservation(user: User, resource: Resource) = 
+    process { manager => 
+      val machine = manager.getVBox.findMachine(resource.name)
+      val session = manager.getSessionObject
+      machine.lockMachine(session, LockType.Write)
+      val mutable = session.getMachine
+      mutable.setExtraData(
+        s"VBoxAuthSimple/users/${user.uid}",
+        user.encryptedPin
+      )
+      mutable.saveSettings
+      session.unlockMachine
+      val progress = machine.launchVMProcess(session, "headless", null)
+      progress.waitForCompletion(-1)
+      session.unlockMachine
+    }
+
+  def destroyReservation(user: User, resource: Resource) =
+    process { manager => 
+      val machine = manager.getVBox.findMachine(resource.name)
+      val session = manager.getSessionObject
+      machine.lockMachine(session, LockType.Shared)
+      val progress = session.getConsole.powerDown
+      progress.waitForCompletion(-1)
+      session.unlockMachine
+      machine.lockMachine(session, LockType.Write)
+      val mutable = session.getMachine
+      mutable.setExtraData(s"VBoxAuthSimple/users/${user.uid}", null)
+      mutable.saveSettings
+      session.unlockMachine
+    }
 
 }

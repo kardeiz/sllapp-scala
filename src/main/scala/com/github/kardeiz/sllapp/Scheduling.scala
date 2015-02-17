@@ -12,7 +12,8 @@ import org.quartz.Job
 import org.quartz.JobExecutionContext
 import org.quartz.JobExecutionException
 
-import org.quartz.ee.servlet.QuartzInitializerListener
+import org.quartz.impl.matchers.GroupMatcher
+import scala.collection.JavaConverters._
 
 import Models._
 
@@ -47,15 +48,28 @@ class ReservationCreateJob extends Job {
     val reservationId = context.getMergedJobDataMap.getIntFromString("reservationId")
     Reservation.findByIdPreload(reservationId) match {
       case Some( (re, rs, us ) )  => {
-        logger.info(us.email.getOrElse("No email"))
-        logger.info(rs.name)
-        logger.info("Hello")
+        VboxUtils.createReservation(us, rs)
       }
       case _ => logger.info("Reservation not found")
-    }
-    
+    }    
   }
+}
 
+class ReservationDestroyJob extends Job {
+
+  import org.slf4j.LoggerFactory
+
+  val logger = LoggerFactory.getLogger(getClass)
+
+  def execute(context: JobExecutionContext) {
+    val reservationId = context.getMergedJobDataMap.getIntFromString("reservationId")
+    Reservation.findByIdPreload(reservationId) match {
+      case Some( (re, rs, us ) )  => {
+        VboxUtils.destroyReservation(us, rs)
+      }
+      case _ => logger.info("Reservation not found")
+    }    
+  }
 }
 
 object JobUtil {
@@ -69,7 +83,25 @@ object JobUtil {
       .build )
     SchedulerAccess.scheduler.scheduleJob(job, trg)
   }
+
+  def destroyReservation(reservation: Reservation) = {
+    val job = JobBuilder.newJob(classOf[ReservationDestroyJob]).build
+    val trg = ( TriggerBuilder.newTrigger
+      .withIdentity("destroy", s"res-${reservation.id.get}")
+      .startAt(reservation.endTime.toDate)
+      .usingJobData("reservationId", reservation.id.get.toString)
+      .build )
+    SchedulerAccess.scheduler.scheduleJob(job, trg)
+  }
   
+  def unscheduleReservationJobs(reservation: Reservation) = {
+    SchedulerAccess.scheduler.getTriggerGroupNames.asScala.filter(
+      _ == s"res-${reservation.id.get}"
+    ).map( 
+      SchedulerAccess.scheduler.getTriggerKeys(GroupMatcher.triggerGroupEquals(_))
+    )
+  }
+
 }
 
 object JobRunner {
