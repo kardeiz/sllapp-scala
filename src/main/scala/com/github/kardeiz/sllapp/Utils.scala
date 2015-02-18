@@ -160,7 +160,7 @@ object VboxUtils {
     result
   }
 
-  def createReservation(user: User, resource: Resource) = 
+  def createReservation(user: User, resource: Resource) {
     process { manager => 
       val machine = manager.getVBox.findMachine(resource.name)
       val session = manager.getSessionObject
@@ -176,8 +176,16 @@ object VboxUtils {
       progress.waitForCompletion(-1)
       session.unlockMachine
     }
+  }
 
-  def destroyReservation(user: User, resource: Resource) =
+  def destroyReservation(reservation: Reservation) {
+    Reservation.findByIdPreload(reservation.id.get) match {
+      case Some( (re, rs, us ) ) => destroyReservation(us, rs)
+      case _ => throw new Exception("Bad reservation ID")
+    }
+  }
+
+  def destroyReservation(user: User, resource: Resource) {
     process { manager => 
       val machine = manager.getVBox.findMachine(resource.name)
       val session = manager.getSessionObject
@@ -191,5 +199,6 @@ object VboxUtils {
       mutable.saveSettings
       session.unlockMachine
     }
-
+  }
+  
 }

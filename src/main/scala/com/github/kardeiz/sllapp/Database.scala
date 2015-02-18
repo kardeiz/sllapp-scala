@@ -152,6 +152,10 @@ object Models {
       JobUtil.destroyReservation(persisted)
     }
 
+    def afterDelete {
+      JobUtil.unscheduleReservationJobs(this)
+    }
+
     def save = {
       beforeSave
       val id = db.withSession { implicit s => Tables.reservations.insert(this) }
@@ -162,6 +166,8 @@ object Models {
 
     def delete = db.withSession { implicit s => 
       Tables.reservations.filter(_.id === id).delete
+      afterDelete
+      this.copy(id = None)
     }
 
   }

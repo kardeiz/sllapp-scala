@@ -74,7 +74,7 @@ class ReservationDestroyJob extends Job {
 
 object JobUtil {
   
-  def createReservation(reservation: Reservation) = {
+  def createReservation(reservation: Reservation) {
     val job = JobBuilder.newJob(classOf[ReservationCreateJob]).build
     val trg = ( TriggerBuilder.newTrigger
       .withIdentity("create", s"res-${reservation.id.get}")
@@ -84,7 +84,7 @@ object JobUtil {
     SchedulerAccess.scheduler.scheduleJob(job, trg)
   }
 
-  def destroyReservation(reservation: Reservation) = {
+  def destroyReservation(reservation: Reservation) {
     val job = JobBuilder.newJob(classOf[ReservationDestroyJob]).build
     val trg = ( TriggerBuilder.newTrigger
       .withIdentity("destroy", s"res-${reservation.id.get}")
@@ -94,12 +94,12 @@ object JobUtil {
     SchedulerAccess.scheduler.scheduleJob(job, trg)
   }
   
-  def unscheduleReservationJobs(reservation: Reservation) = {
-    SchedulerAccess.scheduler.getTriggerGroupNames.asScala.filter(
-      _ == s"res-${reservation.id.get}"
-    ).map( 
-      SchedulerAccess.scheduler.getTriggerKeys(GroupMatcher.triggerGroupEquals(_))
-    )
+  def unscheduleReservationJobs(reservation: Reservation) {
+    val gm   = GroupMatcher.triggerGroupEquals(s"res-${reservation.id.get}")
+    val trgs = SchedulerAccess.scheduler.getTriggerKeys(gm).asScala
+    if ( !trgs.exists(_.getName == "create") && trgs.exists(_.getName == "destroy") )
+      VboxUtils.destroyReservation(reservation)
+    trgs.foreach( SchedulerAccess.scheduler.unscheduleJob(_) ) 
   }
 
 }
