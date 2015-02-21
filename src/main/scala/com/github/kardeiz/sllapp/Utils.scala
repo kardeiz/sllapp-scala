@@ -166,6 +166,11 @@ object VboxUtils {
       val session = manager.getSessionObject
       machine.lockMachine(session, LockType.Write)
       val mutable = session.getMachine
+      val vrdes   = mutable.getVRDEServer
+      vrdes.setEnabled(true)
+      vrdes.setAuthLibrary("VBoxAuthSimple")
+      vrdes.setAuthType(AuthType.External)
+      vrdes.setVRDEProperty("TCP/Ports", resource.port)
       mutable.setExtraData(
         s"VBoxAuthSimple/users/${user.uid}",
         user.encryptedPin

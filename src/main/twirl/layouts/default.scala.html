@@ -80,21 +80,6 @@
           </div>
         }
         @body
-        <pre>
-          @session.get(scentryConfig.returnToKey) match {
-            case Some(x) => { @x.toString }
-            case _ => { "NNOPE" }
-          }
-
-        </pre>
-        <pre>
-          @flash.toString
-        </pre>
-        <pre>
-          @for( nm <- session.getAttributeNames.asScala) {
-            @nm || @session.getAttribute(nm).toString
-          }
-        </pre>
       </div>
 
       <footer class="footer">
