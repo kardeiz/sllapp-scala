@@ -21,6 +21,12 @@ object Settings {
   lazy val sip2   = config.getConfig("sip2")
   lazy val vbox   = config.getConfig("vbox")
 
+  lazy val demoUser = {
+    val uid = sys.env.getOrElse("USER_UID", "")
+    val pin = sys.env.getOrElse("USER_PIN", "")
+    Models.User(None, uid, Utils.passHash(pin), None, None, None)
+  }
+
   lazy val quartzProperties = {
     val props  = new java.util.Properties
     config.getConfig("org.quartz").entrySet.asScala.foreach( k =>
@@ -187,6 +193,17 @@ object VboxUtils {
     Reservation.findByIdPreload(reservation.id.get) match {
       case Some( (re, rs, us ) ) => destroyReservation(us, rs)
       case _ => throw new Exception("Bad reservation ID")
+    }
+  }
+
+  def closeMachineSession(resource: Resource) {
+    process { manager => 
+      val machine = manager.getVBox.findMachine(resource.name)
+      val session = manager.getSessionObject
+      machine.lockMachine(session, LockType.Shared)
+      val progress = session.getConsole.powerDown
+      progress.waitForCompletion(-1)
+      session.unlockMachine
     }
   }
 

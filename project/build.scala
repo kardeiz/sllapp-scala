@@ -23,6 +23,7 @@ object SllappBuild extends Build {
       initialCommands in console := """
         |import com.github.kardeiz.sllapp._
         |import Tables._
+        |import Models._
         |import LocalDriver.simple._
         |""".stripMargin,
       resolvers ++= Seq(
