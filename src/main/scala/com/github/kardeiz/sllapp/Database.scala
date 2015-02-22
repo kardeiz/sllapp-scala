@@ -53,7 +53,7 @@ object DatabaseAccess {
   def addSampleData {
     db.withSession { implicit s =>
       // val resource = Models.Resource(None, "ubuntu", "127.0.0.1", "5300")
-      val resource = Models.Resource(None, "exp-ub", "104.131.13.79", "5300")
+      val resource = Models.Resource(None, "new-ub", "104.131.13.79", "5300")
       val user     = Settings.demoUser
       Tables.users.insert(user)
       Tables.resources.insert(resource)

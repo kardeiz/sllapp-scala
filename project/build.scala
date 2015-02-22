@@ -48,7 +48,7 @@ object SllappBuild extends Build {
         "org.scalatra" %% "scalatra-auth" % "2.4.0.M2",
         "org.virtualbox_4_3" % "vboxjws" % "4.3.0",
         "joda-time" % "joda-time" % "2.7",
-        "org.quartz-scheduler" % "quartz" % "2.2.1",
+        "org.quartz-scheduler" % "quartz" % "2.2.1" exclude("c3p0", "c3p0"),
         "com.typesafe" % "config" % "1.2.1"
       )
     )
